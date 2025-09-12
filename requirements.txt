@@ -1,0 +1,12 @@
+streamlit
+langchain
+langchain-community
+sentence-transformers
+langchain-experimental
+faiss-cpu
+selenium
+webdriver-manager
+beautifulsoup4
+pypdf
+python-dotenv
+groq
