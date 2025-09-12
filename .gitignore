@@ -1,5 +1,5 @@
 .env
 .venv
 faiss_index/
-user.db
+users.db
 __pycache__/

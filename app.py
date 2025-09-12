@@ -62,14 +62,29 @@ def login():
 def chatbot_dashboard():
     st.title("Chatbot Dashboard")
     st.header(f"Welcome, {st.session_state['username']}!")
-    query = st.text_input("Enter your query")
-    if st.button("Submit Query"):
-        if query:
+    
+    # Initialize chat history in session state if not present
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+
+    # Display chat history
+    for message in st.session_state.chat_history:
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
+
+    # Chat input at the bottom
+    if prompt := st.chat_input("Type your message here..."):
+        # Add user message to chat history
+        st.session_state.chat_history.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.write(prompt)
+
+        # Generate and display bot response
+        with st.chat_message("assistant"):
             with st.spinner("Generating response..."):
-                response = rag_query(query)  # Uses lightweight model by default
-            st.write("Response:", response)
-        else:
-            st.warning("Please enter a query")
+                response = rag_query(prompt)
+            st.write(response)
+            st.session_state.chat_history.append({"role": "assistant", "content": response})
 
 def admin_dashboard():
     st.title("Admin Dashboard")
@@ -136,4 +151,5 @@ if __name__ == "__main__":
             st.session_state.pop("role", None)
             st.session_state.pop("username", None)
             st.session_state.pop("initialized", None)
+            st.session_state.pop("chat_history", None)  # Clear chat history on logout
             st.rerun()
