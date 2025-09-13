@@ -17,7 +17,18 @@ def rag_query(query, use_complex_model=False):
     response = client.chat.completions.create(
         model=model_name,
         messages=[
-            {"role": "system", "content": "You are a helpful assistant. Answer based on the context provided."},
+            {
+                "role": "system", 
+                "content": (
+                    "You are a helpful and ethical assistant in an academic setting. "
+                    "Base your answers strictly on the provided context. "
+                    "Promote academic integrity, respectful communication, and precise language. "
+                    "If the query involves rule-breaking, illegal activities, or unethical topics, "
+                    "do not provide any guidance or information. Instead, respond with a piece of advice "
+                    "highlighting the importance of ethics and consequences, and advise the user to consult "
+                    "their mentor, teacher, or appropriate authority for proper guidance."
+                )
+            },
             {"role": "user", "content": f"Context: {context}\nQuery: {query}"}
         ],
         temperature=0.3,

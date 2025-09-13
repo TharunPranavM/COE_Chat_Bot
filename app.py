@@ -6,7 +6,7 @@ from scraper import scrape_websites
 from chunker import chunk_text, preprocess_uploaded_doc
 from embedder import embed_and_store, initialize_vectorstore
 from llm_agent import rag_query
-from config import SCRAPE_LINKS, FAISS_INDEX_PATH
+from config import SCRAPE_LINKS, FAISS_INDEX_PATH, PDF_DIR
 from initializer import initial_vectorization
 
 # Initialize SQLite database for users at script startup
@@ -108,29 +108,20 @@ def main():
     
     if st.session_state["role"] == "admin":
         st.header("Admin Tools")
-        new_urls = st.text_input("Add new web URLs (comma-separated)")
-        if st.button("Scrape New Websites"):
-            if new_urls:
-                urls_list = [url.strip() for url in new_urls.split(",")]
-                with st.spinner("Scraping new websites..."):
-                    texts = scrape_websites(urls_list)
-                    chunks = chunk_text(texts)
-                    embed_and_store(chunks)
-                st.success("New websites scraped and appended to vector DB!")
-            else:
-                st.warning("Please enter URLs")
-        
-        uploaded_file = st.file_uploader("Upload New Document (PDF or Text)", type=["pdf", "txt"])
+        uploaded_file = st.file_uploader("Upload New PDF Document", type=["pdf"])
         if uploaded_file:
-            if uploaded_file.name.endswith(".pdf"):
-                reader = PdfReader(uploaded_file)
-                text = " ".join([page.extract_text() for page in reader.pages if page.extract_text()])
-            else:
-                text = uploaded_file.read().decode("utf-8")
+            # Save the uploaded PDF to the pdfs folder
+            file_path = os.path.join(PDF_DIR, uploaded_file.name)
+            with open(file_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            
+            # Process and embed the PDF
+            reader = PdfReader(uploaded_file)
+            text = " ".join([page.extract_text() for page in reader.pages if page.extract_text()])
             with st.spinner("Processing new document..."):
                 chunks = preprocess_uploaded_doc(text)
                 embed_and_store(chunks)
-            st.success("New document processed and appended to vector DB!")
+            st.success(f"New PDF '{uploaded_file.name}' saved to {PDF_DIR} and embedded in vector DB!")
 
 if __name__ == "__main__":
     if "logged_in" not in st.session_state:
