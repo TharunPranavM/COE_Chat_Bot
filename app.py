@@ -1,11 +1,12 @@
 import streamlit as st
 import sqlite3
+import os
 from pypdf import PdfReader
 from scraper import scrape_websites
 from chunker import chunk_text, preprocess_uploaded_doc
 from embedder import embed_and_store, initialize_vectorstore
 from llm_agent import rag_query
-from config import SCRAPE_LINKS
+from config import SCRAPE_LINKS, FAISS_INDEX_PATH
 from initializer import initial_vectorization
 
 # Initialize SQLite database for users at script startup
@@ -94,11 +95,10 @@ def admin_dashboard():
 def main():
     st.title("RAG Application")
     
-    # Initialize vectorstore and data at app start (once)
-    if "initialized" not in st.session_state:
+    # Initialize vectorstore and data only if FAISS index doesn't exist
+    if not os.path.exists(FAISS_INDEX_PATH):
         with st.spinner("Initializing vector database and data..."):
             initial_vectorization()  # Vectorize and store all data at startup
-        st.session_state["initialized"] = True
         st.success("Initial vectorization completed!")
     
     if st.session_state["role"] == "admin":
