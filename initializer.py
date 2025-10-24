@@ -1,6 +1,6 @@
 import os
 from pypdf import PdfReader
-from scraper import scrape_websites
+from scraper import KprietScraper
 from chunker import chunk_text, preprocess_uploaded_doc
 from embedder import initialize_vectorstore
 from config import SCRAPE_LINKS, PDF_DIR
@@ -17,8 +17,14 @@ def process_pre_existing_pdfs():
     return chunks
 
 def initial_vectorization():
-    pdf_chunks = process_pre_existing_pdfs()
-    web_texts = scrape_websites(SCRAPE_LINKS) if SCRAPE_LINKS else []
-    web_chunks = chunk_text(web_texts)
+    pdf_chunks = []
+    if SCRAPE_LINKS:
+        # Use crawler for first URL, ignore others or crawl multiple
+        scraper = KprietScraper(base_url=SCRAPE_LINKS[0], max_pages=50)
+        web_text = scraper.scrape()
+        web_chunks = chunk_text([web_text])  # chunk the full site
+    else:
+        web_chunks = []
+
     all_chunks = pdf_chunks + web_chunks
     return initialize_vectorstore(all_chunks)

@@ -2,7 +2,6 @@ import streamlit as st
 import sqlite3
 import os
 from pypdf import PdfReader
-from scraper import scrape_websites
 from chunker import chunk_text, preprocess_uploaded_doc
 from embedder import embed_and_store, initialize_vectorstore
 from llm_agent import rag_query
