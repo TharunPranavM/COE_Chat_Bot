@@ -10,3 +10,9 @@ beautifulsoup4
 pypdf
 python-dotenv
 groq
+supabase
+passlib[bcrypt]
+fastapi[standard]
+pydantic
+python-jose[cryptography]
+python-multipart
