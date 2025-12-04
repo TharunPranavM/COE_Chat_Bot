@@ -273,17 +273,6 @@ async def upload_file(
     except Exception as e:
         print(f"Error processing PDF: {e}")
     
-    # Save file info to Supabase
-    try:
-        supabase_admin.table('uploaded_files').insert({
-            'filename': file.filename,
-            'size': file_size,
-            'upload_date': upload_date,
-            'uploaded_by': current_user['email']
-        }).execute()
-    except Exception as e:
-        print(f"Error saving file info: {e}")
-    
     return UploadResponse(
         filename=file.filename,
         file_id=file.filename,
@@ -300,19 +289,28 @@ async def get_files(current_user: dict = Depends(get_current_user)):
         )
     
     try:
-        response = supabase.table('uploaded_files').select('*').order('upload_date', desc=True).execute()
-        
         files_list = []
         total_size = 0
         
-        for file in response.data:
-            files_list.append({
-                "file_id": file.get('filename'),
-                "filename": file.get('filename'),
-                "size": file.get('size', 0),
-                "upload_date": file.get('upload_date')
-            })
-            total_size += file.get('size', 0)
+        # List all PDF files in the directory
+        if os.path.exists(PDF_DIR):
+            for filename in os.listdir(PDF_DIR):
+                if filename.endswith('.pdf'):
+                    file_path = os.path.join(PDF_DIR, filename)
+                    file_stat = os.stat(file_path)
+                    file_size = file_stat.st_size
+                    upload_date = datetime.fromtimestamp(file_stat.st_mtime).isoformat()
+                    
+                    files_list.append({
+                        "file_id": filename,
+                        "filename": filename,
+                        "size": file_size,
+                        "upload_date": upload_date
+                    })
+                    total_size += file_size
+        
+        # Sort by upload date (newest first)
+        files_list.sort(key=lambda x: x['upload_date'], reverse=True)
         
         return {
             "files": files_list,
