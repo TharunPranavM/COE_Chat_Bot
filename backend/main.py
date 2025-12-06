@@ -375,6 +375,40 @@ async def get_files(current_user: dict = Depends(get_current_user)):
         print(f"Error fetching files: {e}")
         return {"files": [], "total_files": 0, "total_size": 0}
 
+@app.get("/api/admin/cache/info")
+async def get_cache_info(current_user: dict = Depends(get_current_user)):
+    """Get information about cached web content"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins can view cache info"
+        )
+    
+    try:
+        from realtime_scraper import get_cache_info
+        return get_cache_info()
+    except Exception as e:
+        return {"status": f"Error: {e}", "cached_urls": []}
+
+@app.post("/api/admin/cache/clear")
+async def clear_cache(current_user: dict = Depends(get_current_user)):
+    """Clear all cached web content"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins can clear cache"
+        )
+    
+    try:
+        from realtime_scraper import clear_cache
+        clear_cache()
+        return {"message": "Cache cleared successfully"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to clear cache: {str(e)}"
+        )
+
 @app.get("/")
 async def root():
     return {"message": "Role-based Auth API with RAG"}

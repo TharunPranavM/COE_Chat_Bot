@@ -16,3 +16,7 @@ fastapi[standard]
 pydantic
 python-jose[cryptography]
 python-multipart
+
+redis
+requests
+lxml
