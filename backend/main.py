@@ -14,7 +14,8 @@ from supabase_client import supabase, supabase_admin
 from llm_agent import rag_query
 from chunker import preprocess_uploaded_doc
 from embedder import embed_and_store
-from config import PDF_DIR
+from config import PDF_DIR, FAISS_INDEX_PATH
+from initializer import initial_vectorization
 
 load_dotenv()
 
@@ -33,6 +34,20 @@ security = HTTPBearer()
 
 # Ensure PDF directory exists
 os.makedirs(PDF_DIR, exist_ok=True)
+
+# Initialize vector store on startup
+@app.on_event("startup")
+async def startup_event():
+    """Initialize FAISS vector store if it doesn't exist"""
+    if not os.path.exists(FAISS_INDEX_PATH):
+        print("FAISS index not found. Initializing vector store...")
+        try:
+            initial_vectorization()
+            print("Vector store initialized successfully!")
+        except Exception as e:
+            print(f"Error initializing vector store: {e}")
+    else:
+        print("FAISS index found. Vector store ready.")
 
 # Helper functions
 def get_user_by_email(email: str):
@@ -254,8 +269,22 @@ async def upload_file(
             detail="Only admins can upload files"
         )
     
+    # Validate file type
+    if not file.filename.endswith('.pdf'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only PDF files are allowed"
+        )
+    
     # Save file with original name
     file_path = os.path.join(PDF_DIR, file.filename)
+    
+    # Check if file already exists
+    if os.path.exists(file_path):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"File '{file.filename}' already exists"
+        )
     
     content = await file.read()
     with open(file_path, "wb") as f:
@@ -264,14 +293,39 @@ async def upload_file(
     file_size = len(content)
     upload_date = datetime.utcnow().isoformat()
     
-    # Process PDF and embed
+    # Process PDF and embed into FAISS vector store
     try:
+        print(f"Processing PDF: {file.filename}")
         pdf_reader = PdfReader(file_path)
         text = " ".join([page.extract_text() for page in pdf_reader.pages if page.extract_text()])
+        
+        if not text.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="PDF appears to be empty or contains no extractable text"
+            )
+        
         chunks = preprocess_uploaded_doc(text)
+        print(f"Generated {len(chunks)} chunks from PDF")
+        
+        # Embed and append to existing FAISS index
         embed_and_store(chunks)
+        print(f"Successfully embedded {file.filename} into vector store")
+        
+    except HTTPException:
+        # Remove the file if processing failed
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        raise
     except Exception as e:
+        # Remove the file if processing failed
+        if os.path.exists(file_path):
+            os.remove(file_path)
         print(f"Error processing PDF: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to process PDF: {str(e)}"
+        )
     
     return UploadResponse(
         filename=file.filename,
